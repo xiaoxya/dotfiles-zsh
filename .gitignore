@@ -1,0 +1,2 @@
+# Don't track machine-specific local config
+zsh.d/05-local.zsh
