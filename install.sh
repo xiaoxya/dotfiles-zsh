@@ -74,7 +74,7 @@ echo "=== Zsh Dotfiles Installer ==="
 echo ""
 
 # 1. Symlink files
-echo "[1/3] Linking config files..."
+echo "[1/4] Linking config files..."
 mkdir -p "$HOME/.zsh.d"
 link "$DOTFILES_DIR/zshrc" "$HOME/.zshrc"
 link "$DOTFILES_DIR/p10k.zsh" "$HOME/.p10k.zsh"
@@ -84,8 +84,11 @@ done
 echo ""
 
 # 2. Install system dependencies
-echo "[2/3] Installing dependencies..."
+echo "[2/4] Installing dependencies..."
 echo "  detected: $(detect_pkg_mgr)"
+
+# 先安装 zsh（必须在 Oh My Zsh 之前）
+install_if_missing zsh zsh
 
 # 核心工具 — 包名映射 (arch / others)
 if need_cmd pacman; then
@@ -117,7 +120,7 @@ fi
 echo ""
 
 # 3. Install Oh My Zsh + plugins
-echo "[3/3] Installing Oh My Zsh & plugins..."
+echo "[3/4] Installing Oh My Zsh & plugins..."
 
 if [[ ! -d "$HOME/.oh-my-zsh" ]]; then
   echo "  installing Oh My Zsh..."
@@ -138,5 +141,23 @@ for plugin in zsh-autosuggestions zsh-syntax-highlighting; do
   fi
 done
 
+# 4. Switch default shell to zsh
 echo ""
-echo "=== Done! Restart your terminal or run: source ~/.zshrc ==="
+echo "[4/4] Switching default shell to zsh..."
+ZSH_PATH="$(command -v zsh)"
+if [[ "$SHELL" == "$ZSH_PATH" ]]; then
+  echo "  already using zsh"
+else
+  # 确保 zsh 在 /etc/shells 中
+  if ! grep -qx "$ZSH_PATH" /etc/shells 2>/dev/null; then
+    echo "$ZSH_PATH" | sudo tee -a /etc/shells >/dev/null
+  fi
+  if command -v chsh &>/dev/null; then
+    sudo chsh -s "$ZSH_PATH" "$USER" && echo "  default shell changed to $ZSH_PATH"
+  else
+    echo "  chsh not found, please run manually: chsh -s $ZSH_PATH"
+  fi
+fi
+
+echo ""
+echo "=== Done! Restart your terminal or run: exec zsh ==="
