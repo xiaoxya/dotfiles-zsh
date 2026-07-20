@@ -102,6 +102,9 @@ echo "  detected: $(detect_pkg_mgr)"
 # 先安装 zsh（必须在 Oh My Zsh 之前）
 install_if_missing zsh zsh
 
+# fnm 依赖
+install_if_missing unzip unzip
+
 # 核心工具 — 包名映射 (arch / others)
 if need_cmd pacman; then
   install_if_missing vim    vim
@@ -112,9 +115,15 @@ if need_cmd pacman; then
 else
   install_if_missing vim    vim
   install_if_missing eza    eza
-  install_if_missing bat    bat 2>/dev/null || install_if_missing bat batcat
   install_if_missing fzf    fzf
   install_if_missing zoxide zoxide
+  # bat 在 Ubuntu/Debian 上包名是 batcat
+  if need_cmd bat || need_cmd batcat; then
+    echo "  bat: already installed"
+  else
+    echo "  installing bat..."
+    pkg_install batcat
+  fi
 fi
 
 # fnm (curl 通用安装)
@@ -136,20 +145,25 @@ echo "[3/4] Installing Oh My Zsh & plugins..."
 
 if [[ ! -d "$HOME/.oh-my-zsh" ]]; then
   echo "  installing Oh My Zsh..."
-  sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended
+  if sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended; then
+    echo "  Oh My Zsh installed"
+  else
+    echo "  WARNING: Oh My Zsh installation failed. Check your network and retry."
+    echo "  You can install manually: sh -c \"\$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)\""
+  fi
 fi
 
 if [[ ! -d "$HOME/.oh-my-zsh/custom/themes/powerlevel10k" ]]; then
   echo "  installing Powerlevel10k..."
   git clone --depth=1 https://github.com/romkatv/powerlevel10k.git \
-    "$HOME/.oh-my-zsh/custom/themes/powerlevel10k"
+    "$HOME/.oh-my-zsh/custom/themes/powerlevel10k" || echo "  WARNING: Powerlevel10k installation failed"
 fi
 
 PLUGINS_DIR="$HOME/.oh-my-zsh/custom/plugins"
 for plugin in zsh-autosuggestions zsh-syntax-highlighting; do
   if [[ ! -d "$PLUGINS_DIR/$plugin" ]]; then
     echo "  installing $plugin..."
-    git clone --depth=1 "https://github.com/zsh-users/$plugin" "$PLUGINS_DIR/$plugin"
+    git clone --depth=1 "https://github.com/zsh-users/$plugin" "$PLUGINS_DIR/$plugin" || echo "  WARNING: $plugin installation failed"
   fi
 done
 
