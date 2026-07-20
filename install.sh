@@ -3,6 +3,18 @@ set -euo pipefail
 
 DOTFILES_DIR="$(cd "$(dirname "$0")" && pwd)"
 BACKUP_DIR="$HOME/.dotfiles-backup/$(date +%Y%m%d-%H%M%S)"
+CLEANUP=false
+
+# --- parse args ---
+for arg in "$@"; do
+  case "$arg" in
+    --cleanup) CLEANUP=true ;;
+    -h|--help)
+      echo "Usage: $0 [--cleanup]"
+      echo "  --cleanup  Delete the repo directory after installation"
+      exit 0 ;;
+  esac
+done
 
 # --- helpers ---
 backup() {
@@ -15,11 +27,11 @@ backup() {
   fi
 }
 
-link() {
+install_file() {
   local src="$1" dst="$2"
   backup "$dst"
-  ln -sf "$src" "$dst"
-  echo "  linked: $dst -> $src"
+  cp -a "$src" "$dst"
+  echo "  copied: $dst"
 }
 
 need_cmd() { command -v "$1" &>/dev/null; }
@@ -73,13 +85,13 @@ install_if_missing() {
 echo "=== Zsh Dotfiles Installer ==="
 echo ""
 
-# 1. Symlink files
-echo "[1/4] Linking config files..."
+# 1. Copy config files
+echo "[1/4] Installing config files..."
 mkdir -p "$HOME/.zsh.d"
-link "$DOTFILES_DIR/zshrc" "$HOME/.zshrc"
-link "$DOTFILES_DIR/p10k.zsh" "$HOME/.p10k.zsh"
+install_file "$DOTFILES_DIR/zshrc" "$HOME/.zshrc"
+install_file "$DOTFILES_DIR/p10k.zsh" "$HOME/.p10k.zsh"
 for f in "$DOTFILES_DIR"/zsh.d/*.zsh; do
-  link "$f" "$HOME/.zsh.d/$(basename "$f")"
+  install_file "$f" "$HOME/.zsh.d/$(basename "$f")"
 done
 echo ""
 
@@ -157,6 +169,14 @@ else
   else
     echo "  chsh not found, please run manually: chsh -s $ZSH_PATH"
   fi
+fi
+
+# 5. Cleanup repo if requested
+if [[ "$CLEANUP" == true ]]; then
+  echo ""
+  echo "Cleaning up repository..."
+  rm -rf "$DOTFILES_DIR"
+  echo "  removed: $DOTFILES_DIR"
 fi
 
 echo ""
